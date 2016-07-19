@@ -16,8 +16,9 @@ RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
     python get-pip.py && \
     rm get-pip.py
 
-## install the required R packages
-
 ## install the required python packages
 RUN pip install --no-cache-dir numpy
 RUN pip --no-cache-dir install pandas
+
+## install the required R packages
+Run Rscript -e 'install.packages(pkgs= "emma", dependencies = TRUE)'
