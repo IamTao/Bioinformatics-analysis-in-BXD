@@ -16,8 +16,8 @@ library(shinysky)
 library(stringr)
 
 # define path
-path.in.data <- "/Users/hali/Documents/gene_expression/new/data/output"
-# path.in.data <- "/datadisk/gene_expression/data/output"
+path.in.data <- "/Users/hali/Dropbox/sv/gene_expression/new/data/output"
+path.in.data <- "/datadisk/data"
 path.in.global <- file.path(path.in.data, "global")
 
 # Load dataset
@@ -29,18 +29,18 @@ shinyServer(function(input, output, session){
   # Gene symbol input, default from URL address if given
   output$selectTextInput <- renderUI({
     default <- parseQueryString(session$clientData$url_search)$gene
-    if (is.null(default)) default <- "Ace"
+    if (is.null(default)) default <- "Ace_17257444_BAT_mRNA"
     textInput("gene_id", "Gene Symbol", value=default)
-    # select2Input("gene_id","Gene Symbol", choices=c(my_autocomplete_list), type = c("input", "select"))
   })
   # select the data source.
   output$selectDataSource <- renderUI({
     default <- parseQueryString(session$clientData$url_search)$data_source
-    if (is.null(default)) default <- "Midbrain"
+    if (is.null(default)) default <- "EyeOld"
     selectInput("data_source", "Data Source", c("BAT" = "BAT", "Eye" = "Eye", "Heart" = "Heart", "Hippocampus" = "Hippocampus", "Kidney" = "Kidney", "Liver" = "Liver",
                                                 "Liver protein" = "LiverProt", "Metabolite" = "Metabolite", "Midbrain" = "Midbrain", "Muscle" = "Muscle", "NAc" = "NAc",
-                                                "PFC" = "PFC", "scWAT" = "scWAT", "Spleen" = "Spleen", "Striatum" = "Striatum"), default)
+                                                "PFC" = "PFC", "scWAT" = "scWAT", "Spleen" = "Spleen", "Striatum" = "Striatum", "KidneyFemale" = "KidneyFemale", "KidneyMale" = "KidneyMale"), default)
   })
+  
   # select the type of diet.
   output$selectDiet <- renderUI({
     default <- parseQueryString(session$clientData$url_search)$diet
@@ -73,7 +73,7 @@ shinyServer(function(input, output, session){
 
   # download
   output$downloadData <- downloadHandler(
-    filename = function() {paste0(input$gene_id, '_', input$data_source, '_', input$diet, '_', input$analysis, '.Rds')},
+    filename = function() {paste0(input$gene_id, '_', input$data_source, '_', input$diet, '_', input$analysis, '.rds')},
     content = function(file) {
       plot_type     <- decide.plot_type(input$data_source, input$diet, input$analysis)
       file_location <- get.file_location(input$gene_id, plot_type)
@@ -87,7 +87,7 @@ shinyServer(function(input, output, session){
 
   output$downloadPlot <- downloadHandler(
     # specify the file name
-    filename = function() {paste0(input$gene_id, '_', input$data_source, '_', input$diet, '_', input$analysis, '.pdf')},
+    filename = function() {paste0(paste(input$analysis, input$data_source, input$diet, input$gene_id, sep='_'), '.rds')},
     content = function(file){
       # open the device
       pdf(file, width = 10, height = 7)
@@ -133,7 +133,7 @@ decide.plot_type <-function(analysis, data_source, diet){
 
 # get the location of a file based on its gene name and plot type.
 get.file_location <- function(gene_name, plot_type){
-  return(paste(path.in.data, plot_type, paste0(gene_name, ".Rds"), sep="/"))
+  return(paste(path.in.data, plot_type, paste0(gene_name, ".rds"), sep="/"))
 }
 
 # Given the name of gene, get the information of gene.
@@ -167,8 +167,8 @@ create.plot <- function(gene_name, data_source, diet, analysis){
     rotation          <- 40
     sigline           <- 3.5
     given_gene_y      <- data_table     
-    given_gene_y$Category_ID  <- as.numeric(given_gene_y$Category_ID); given_gene_y$lod  <- as.numeric(given_gene_y$lod)
-    y_limits          <- ceiling(max(given_gene_y$lod, na.rm = TRUE))
+    given_gene_y$Category_ID  <- as.numeric(given_gene_y$Category_ID); given_gene_y$logp  <- as.numeric(given_gene_y$logp)
+    y_limits          <- ceiling(max(given_gene_y$logp, na.rm = TRUE))
     x_limits          <- 4466
     cat               <- levels(given_gene_y$Category)
     pos_labels        <- vector(length=length(cat))
@@ -178,48 +178,48 @@ create.plot <- function(gene_name, data_source, diet, analysis){
       pos_labels[i] <- ((max(b$Category_ID, na.rm = TRUE) - min(b$Category_ID, na.rm = TRUE))/2) + min(b$Category_ID, na.rm = TRUE)
       rm(a,b)
     }     
-    plotmain=paste("PheWAS Manhattan Plot for ", gene_info$name, " (on Chr", gene_info$chr, ": ", gene_info$start_pos, " Mb)", sep="")     
+    plotmain=paste0("PheWAS Manhattan Plot for ", gene_info$name, " (on Chr", gene_info$chr, ": ", gene_info$pos, ")")     
     # make normal plot
     par(mar=c(12,6,5,3))
-    plot(given_gene_y$Category_ID[(given_gene_y$lod >= 0) & (given_gene_y$lod < 2)], 
-         given_gene_y$lod[(given_gene_y$lod >= 0) & (given_gene_y$lod < 2)], 
+    plot(given_gene_y$Category_ID[(given_gene_y$logp >= 0) & (given_gene_y$logp < 2)], 
+         given_gene_y$logp[(given_gene_y$logp >= 0) & (given_gene_y$logp < 2)], 
          cex = 1, pch = 20, ylim = c(0, y_limits), xlim = c(0,x_limits), 
-         col = c("#3953A4","#93C83D","#F68C1E","#6FCCDD")[given_gene_y$color[(given_gene_y$lod >= 0) & (given_gene_y$lod < 2)]], 
-         ylab = "LOD",main = plotmain, cex.main = 2, cex.lab = 1.8, cex.axis = 1.8, xlab = "", xaxt = "n")
+         col = c("#3953A4","#93C83D","#F68C1E","#6FCCDD")[given_gene_y$color[(given_gene_y$logp >= 0) & (given_gene_y$logp < 2)]], 
+         ylab = "Log(pvalue)",main = plotmain, cex.main = 2, cex.lab = 1.8, cex.axis = 1.8, xlab = "", xaxt = "n")
     par(new=TRUE)
-    plot(given_gene_y$Category_ID[(given_gene_y$lod >= 2) & (given_gene_y$lod < 3)], 
-         given_gene_y$lod[(given_gene_y$lod >= 2) & (given_gene_y$lod < 3)], 
+    plot(given_gene_y$Category_ID[(given_gene_y$logp >= 2) & (given_gene_y$logp < 3)], 
+         given_gene_y$logp[(given_gene_y$logp >= 2) & (given_gene_y$logp < 3)], 
          cex = 1.5, pch = 20, ylim = c(0, y_limits), xlim = c(0, x_limits),
-         col = c("#3953A4","#93C83D","#F68C1E","#6FCCDD")[given_gene_y$color[(given_gene_y$lod>=2) & (given_gene_y$lod < 3)]], 
+         col = c("#3953A4","#93C83D","#F68C1E","#6FCCDD")[given_gene_y$color[(given_gene_y$logp>=2) & (given_gene_y$logp < 3)]], 
          xlab = "", ylab ="", xaxt = "n", yaxt = "n")
     par(new=TRUE)
-    plot(given_gene_y$Category_ID[(given_gene_y$lod >= 3) & (given_gene_y$lod < 4)], 
-         given_gene_y$lod[(given_gene_y$lod >= 3) & (given_gene_y$lod < 4)], 
+    plot(given_gene_y$Category_ID[(given_gene_y$logp >= 3) & (given_gene_y$logp < 4)], 
+         given_gene_y$logp[(given_gene_y$logp >= 3) & (given_gene_y$logp < 4)], 
          cex = 2, pch = 20, ylim = c(0,y_limits), xlim = c(0, x_limits),
-         col=c("#3953A4","#93C83D","#F68C1E","#6FCCDD")[given_gene_y$color[(given_gene_y$lod >= 3) & (given_gene_y$lod < 4)]], 
+         col=c("#3953A4","#93C83D","#F68C1E","#6FCCDD")[given_gene_y$color[(given_gene_y$logp >= 3) & (given_gene_y$logp < 4)]], 
          xlab = "", ylab = "", xaxt = "n",yaxt = "n")
     par(new=TRUE)
-    plot(given_gene_y$Category_ID[given_gene_y$lod >= 4], 
-         given_gene_y$lod[given_gene_y$lod >= 4], 
+    plot(given_gene_y$Category_ID[given_gene_y$logp >= 4], 
+         given_gene_y$logp[given_gene_y$logp >= 4], 
          cex = 3, pch = 20, ylim = c(0,y_limits), xlim = c(0,x_limits),
-         col = c("#3953A4","#93C83D","#F68C1E","#6FCCDD")[given_gene_y$color[given_gene_y$lod >= 4]], 
+         col = c("#3953A4","#93C83D","#F68C1E","#6FCCDD")[given_gene_y$color[given_gene_y$logp >= 4]], 
          xlab = "", ylab = "", xaxt = "n", yaxt = "n")      
     text(pos_labels, par("usr")[3] - 0.25, srt = rotation, adj = 1,labels = levels(given_gene_y$Category), xpd = TRUE, cex = 1.5)
     abline(h = sigline, col = "red", lty = 2) # we need to calculate the threshold for significance     
     for (i in 1:max(given_gene_y$Category_ID, na.rm = TRUE)){  # add the labels for significant phenotypes
-      if (given_gene_y$lod[i] > sigline){
+      if (given_gene_y$logp[i] > sigline){
         labels<-toString(given_gene_y$Shown_pheno[i])
-        text(given_gene_y$Category_ID[i], given_gene_y$lod[i], labels=toString(given_gene_y$Shown_pheno[i]), cex=1.2, pos=4)
+        text(given_gene_y$Category_ID[i], given_gene_y$logp[i], labels=toString(given_gene_y$Shown_pheno[i]), cex=1.2, pos=4)
       }
     }
 
   }
   else if (grepl("qtlmapping", plot_type)){
-    plot(data_table, main=paste0("QTL Plot for ", gene_info$name, ", ", plot_type))
+    plot(data_table, main=paste0("QTL Plot for ", gene_name, ", at ", plot_type))
   }
   else if (grepl("mediation", plot_type)){
     med <- data_table[data_table$chr %in% c(as.character(1:19),"X"),] # to avoid problems with Y, M and NA
-    plot(med, main=paste0("Mediation Plot for ", "gene_info$name", ", ", "plot_type"))
+    plot(med, main=paste0("Mediation Plot for ", gene_name, ", at ", plot_type))
   }
   else{
     nodata("Plot type not specified")
@@ -231,25 +231,27 @@ create.plot <- function(gene_name, data_source, diet, analysis){
 # Create the iplot (interactive plot)
 create.iplot <- function(gene_name, data_source, diet, analysis){
   if (is.null(gene_name)) return(NULL)
-  
-  plot_type     <- decide.plot_type(data_source, diet, analysis)
+  # load gene information, e.g., gene file location, gene information.
+  plot_type     <- decide.plot_type(analysis, data_source, diet)
   file_location <- get.file_location(gene_name, plot_type)
   gene_info     <- get.gene_info(gene_name)
-
+  # check the existence of the file.
+  
   if (!file.exists(file_location)) {
     return(NULL)
   } 
-
+  
+  # read data
   data_table    <- readRDS(file_location)
 
   if (grepl("phewas", plot_type)){
-    plotmain=paste("PheWAS Manhattan Plot for ", gene_info$name, " (on Chr", gene_info$chr, ": ", gene_info$start_pos, " Mb)", sep="")     
+    plotmain=paste0("PheWAS Manhattan Plot for ", gene_info$name, " (on Chr", gene_info$chr, ": ", gene_info$pos, ")")     
 
     # make interactive plot by iplot
     given_gene_y              <- data_table     
-    given_gene_y$Category_ID  <- as.numeric(given_gene_y$Category_ID); given_gene_y$lod  <- as.numeric(given_gene_y$lod)
-    p0 <- iplot(x = given_gene_y$Category_ID, y = given_gene_y$lod, group = given_gene_y$color, indID = given_gene_y$Shown_pheno,
-                chartOpts = list(xlab="Category", xlab = "", xaxt = "n", ylab = "LOD", title = plotmain, height = 700, width = 1000, pointcolor = c("#3953A4","#93C83D","#F68C1E","#6FCCDD")))
+    given_gene_y$Category_ID  <- as.numeric(given_gene_y$Category_ID); given_gene_y$logp  <- as.numeric(given_gene_y$logp)
+    p0 <- iplot(x = given_gene_y$Category_ID, y = given_gene_y$logp, group = given_gene_y$color, indID = given_gene_y$Shown_pheno,
+                chartOpts = list(xlab="Category", xlab = "", xaxt = "n", ylab = "Log(pvalue)", title = plotmain, height = 700, width = 1000, pointcolor = c("#3953A4","#93C83D","#F68C1E","#6FCCDD")))
     return(p0)
   }
   else if (grepl("mediation", plot_type)){

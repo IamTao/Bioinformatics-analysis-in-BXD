@@ -107,16 +107,23 @@ calculate.all.pvalue.parallel <- function(tmp.in.path.code, tmp.in.path.data, tm
   stopCluster(cl)
 }
 
-calculate.all.pvalue.sequential <- function(tmp.in.path.data, tmp.in.path.global, filename.set, tmp.out.path){
+calculate.all.pvalue.sequential <- function(tmp.in.path.data, tmp.in.path.global, filename.set, tmp.out.path, force=FALSE){
   # Load global dataset
   bxd.mapping <- load.dataset(tmp.in.path.global, file.name="map_BXD.rds")
 
-  tmp.file.from <- 3
-  tmp.file.to <- 3 # length(filename.set)
+  tmp.file.from <- 1
+  tmp.file.to <- length(filename.set)
 
   for(tmp.index in seq(tmp.file.from: tmp.file.to)) {
-    message(paste("Processing ", filename.set[tmp.index], "......................."))
-    calculate.single.pvalue(tmp.in.path.data, filename.set[tmp.index], tmp.out.path, bxd.mapping)
+    filename <- filename.set[tmp.index]                         
+    path.out.workspace <- paste(tmp.out.path, paste0(filename, ".rds"), sep="/")
+    if (force || !file.exists(path.out.workspace)) {
+      message(paste("Processing", filename, "..."))
+      calculate.single.pvalue(tmp.in.path.data, filename, tmp.out.path, bxd.mapping)
+    }
+    else{
+      message(paste("Existing processed", filename, "continue..."))
+    }
   }
 }
 
@@ -141,7 +148,8 @@ calculate.single.phewas.assistant <- function(gene.info, bxd.mapping, phenotypes
   # snp.info <- bxd.mapping[Chr == gene.chromosome_name][Pos >= min(gene.start_postition, gene.end_postition)][Pos <= max(gene.start_postition, gene.end_postition)]
 
   # calculate y
-  filterdata <- snp.info[pvalue, allow.cartesian=TRUE, on="SNP", nomatch=0]
+  filterdata <- pvalue[snp.info, allow.cartesian=TRUE, on="SNP", nomatch=0]
+
   set(filterdata,j=c('SNP', 'Pos', 'Chr'), value=NULL)
   pval  <- apply(filterdata, 2, min)
   pfinal <- data.table(pval)
@@ -240,6 +248,6 @@ filename.set <- unique(extract.filename.set(path.data.in.geno_pheno)$basename.wi
 # calculate.single.phewas(path.data.out.pvalue, filename.set[[4]], path.data.out.phewas, bxd.mapping, phenotypes.id_aligner, gene.position_aligner)
 
 # ------Run on Server
-# calculate.all.pvalue.sequential(path.data.in.geno_pheno, path.data.in.global, filename.set, path.data.out.pvalue)
+# calculate.all.pvalue.sequential(path.data.in.geno_pheno, path.data.in.global, filename.set, path.data.out.pvalue, force=FALSE)
 calculate.all.pvalue.parallel(path.code.data_processing, path.data.in.geno_pheno, path.data.in.global, filename.set, path.data.out.pvalue, force=FALSE)
-calculate.all.phewas(path.data.out.pvalue, path.data.out.global, filename.set, path.data.out.phewas, force=FALSE)
+# calculate.all.phewas(path.data.out.pvalue, path.data.out.global, filename.set, path.data.out.phewas, force=FALSE)

@@ -1,4 +1,4 @@
-HOST=hpc-16
+HOST=shiny
 MODE=new
 DISK=datadisk-hpc
 
@@ -10,7 +10,7 @@ cp_all_cloud:
 	gcloud compute ssh ${HOST}
 
 cp_code_cloud:
-	gcloud compute copy-files ../code/ ${HOST}:/${DISK}/gene_expression/
+	gcloud compute copy-files ../code ${HOST}:/${DISK}/gene_expression/
 	# gcloud compute ssh ${HOST}
 
 build_computation:
